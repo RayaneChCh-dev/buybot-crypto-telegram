@@ -1,0 +1,1 @@
+web: tsx src/main.ts
