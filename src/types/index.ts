@@ -19,9 +19,10 @@ interface TokenConfig {
   decimals: number;
 }
 
+// FIX: Make port required since Express needs it to start
 interface ServerConfig {
-  port?: string | number | undefined;
-  environment?: string | undefined;
+  port: number;  // Changed from optional to required
+  environment: string;  // Changed from optional to required
 }
 
 interface FeaturesConfig {
@@ -40,4 +41,11 @@ interface Config {
   features: FeaturesConfig;
 }
 
-export type { Config, TelegramConfig, HeliusConfig, TokenConfig, ServerConfig, FeaturesConfig };
+export type { 
+  Config, 
+  TelegramConfig, 
+  HeliusConfig, 
+  TokenConfig, 
+  ServerConfig, 
+  FeaturesConfig 
+};

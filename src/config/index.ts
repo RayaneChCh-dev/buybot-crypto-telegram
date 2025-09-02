@@ -1,7 +1,5 @@
 import 'dotenv/config';
-
 import { Config } from '../types';
-import { parse } from 'path';
 
 const config: Config = {
   telegram: {
@@ -23,8 +21,9 @@ const config: Config = {
     decimals: parseInt(process.env.TOKEN_DECIMALS || '6', 10),
   },
   server: {
-    port:process.env.PORT ?? '3000',
-    environment: process.env.NODE_ENV ?? 'development',
+    // FIX 1: Ensure port is a number, not string
+    port: parseInt(process.env.PORT || '3000', 10),
+    environment: process.env.NODE_ENV || 'development',
   },
   features: {
     enablePolling: process.env.ENABLE_POLLING === 'true',
@@ -35,19 +34,39 @@ const config: Config = {
   },
 };
 
-// Validate required config
-const required: Array<keyof Config | string> = [
-  'telegram.botToken',
-  'telegram.channelId',
-  'helius.apiKey',
-  'token.mintAddress',
+// Validate required config with better error messages
+const required: Array<{key: string, path: string}> = [
+  { key: 'TELEGRAM_BOT_TOKEN', path: 'telegram.botToken' },
+  { key: 'TELEGRAM_CHANNEL_ID', path: 'telegram.channelId' },
+  { key: 'HELIUS_API_KEY', path: 'helius.apiKey' },
+  { key: 'TOKEN_MINT_ADDRESS', path: 'token.mintAddress' },
 ];
 
-for (const key of required) {
-  const value = key.split('.').reduce((obj, k) => (obj as any)?.[k], config);
+// FIX 2: Better validation with specific error messages
+for (const { key, path } of required) {
+  const value = path.split('.').reduce((obj, k) => (obj as any)?.[k], config);
   if (!value) {
-    throw new Error(`❌ Missing required config: ${key}`);
+    console.error(`❌ Missing required environment variable: ${key}`);
+    console.error(`   Set this variable in your Heroku config vars or .env file`);
+    throw new Error(`Missing required config: ${key}`);
   }
 }
+
+// FIX 3: Additional validation for token configuration
+if (isNaN(config.token.decimals)) {
+  throw new Error('TOKEN_DECIMALS must be a valid number');
+}
+
+if (config.server.port !== undefined) {
+  console.log(`   Port: ${config.server.port}`);
+} else {
+  console.log(`   Port: not set`);
+}
+
+console.log(`✅ Configuration loaded successfully`);
+console.log(`   Environment: ${config.server.environment}`);
+console.log(`   Port: ${config.server.port}`);
+console.log(`   Token: ${config.token.symbol} (${config.token.decimals} decimals)`);
+console.log(`   Polling enabled: ${config.features.enablePolling}`);
 
 export default config;
