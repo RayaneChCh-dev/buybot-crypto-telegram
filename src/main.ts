@@ -10,8 +10,13 @@ process.on('unhandledRejection', (reason, promise) => {
     logger.error(`Unhandled Rejection at: ${promise} reason: ${reason}`);
 });
 
-// Start the application
-server.start().catch((error) => {
-    logger.error('Failed to start server:', error);
+try {
+    // Start the application
+    server.start().catch((error) => {
+        logger.error('Failed to start server:', error);
+        process.exit(1);
+    });
+} catch (error: any) {
+    logger.error('Bot failed to start:', error);
     process.exit(1);
-});
+}
