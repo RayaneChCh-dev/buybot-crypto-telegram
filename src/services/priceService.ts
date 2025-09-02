@@ -42,7 +42,7 @@ class PriceService {
                 this.lastUpdate = Date.now();
                 logger.debug(`SOL price updated: $${this.solPrice}`);
             }, 2, 1000, 'Price fetch');
-        } catch (error) {
+        } catch (error: any) {
             logger.error('Failed to update SOL price:', error);
         }
     }

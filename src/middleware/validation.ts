@@ -1,6 +1,7 @@
 import rateLimit from 'express-rate-limit';
-import config from '../config';
-import logger from '../utils/logger.js';
+import logger from '../utils/logger';
+
+import { Request, Response, NextFunction } from 'express';
 
 // Rate limiting for webhook endpoint
 const webhookLimiter = rateLimit({
@@ -16,7 +17,7 @@ const webhookLimiter = rateLimit({
 });
 
 // Validate webhook source (basic IP validation)
-function validateWebhookSource(req, res, next) {
+function validateWebhookSource(req: Request, res: Response, next: NextFunction) {
     // Add Helius IP ranges here if they provide them
     // For now, just log the source
     logger.debug(`Webhook request from ${req.ip}`);
@@ -24,7 +25,7 @@ function validateWebhookSource(req, res, next) {
 }
 
 // Validate request payload
-function validateWebhookPayload(req, res, next) {
+function validateWebhookPayload(req: Request, res: Response, next: NextFunction) {
     if (!Array.isArray(req.body)) {
         logger.warn('Invalid webhook payload format');
         return res.status(400).json({ error: 'Invalid payload format' });

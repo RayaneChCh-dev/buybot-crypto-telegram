@@ -5,7 +5,11 @@ interface Instruction {
     programId: string;
 }
 
-const DEX_PROGRAMS = {
+interface DEXPrograms {
+    [key: string]: string;
+}
+
+const DEX_PROGRAMS: DEXPrograms = {
     '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8': 'Raydium',
     'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4': 'Jupiter', 
     'PhoeNiX7VjjpGxLKn6YCwXJvT4XhUdLQJPf1Dc2tPx8': 'Photon',
@@ -15,7 +19,7 @@ const DEX_PROGRAMS = {
 const WSOL_MINT = 'So11111111111111111111111111111111111111112';
 
 class TransactionParser {
-    static parseHeliusTransaction(transaction) {
+    static parseHeliusTransaction(transaction: any) {
         try {
             const { description, signature, timestamp, events, instructions, feePayer } = transaction;
             
@@ -26,8 +30,8 @@ class TransactionParser {
             // Find swap involving our token
             let relevantSwap: { tokenInputs: any[], tokenOutputs: any[] } | null = null;
             for (const swap of events.swap) {
-                const hasOurToken = swap.tokenInputs?.some(input => input.mint === config.token.mintAddress) ||
-                                  swap.tokenOutputs?.some(output => output.mint === config.token.mintAddress);
+                const hasOurToken = swap.tokenInputs?.some((input: any) => input.mint === config.token.mintAddress) ||
+                                  swap.tokenOutputs?.some((output: any) => output.mint === config.token.mintAddress);
                 if (hasOurToken) {
                     relevantSwap = swap;
                     break;
@@ -68,7 +72,7 @@ class TransactionParser {
                 isWhale,
                 raw: transaction
             };
-        } catch (error) {
+        } catch (error: any) {
             logger.error('Error parsing transaction:', error);
             return null;
         }
@@ -82,7 +86,7 @@ class TransactionParser {
         return 'Unknown DEX';
     }
 
-    static formatNumber(num, decimals = 2) {
+    static formatNumber(num: number, decimals = 2) {
         if (num >= 1e9) return (num / 1e9).toFixed(decimals) + 'B';
         if (num >= 1e6) return (num / 1e6).toFixed(decimals) + 'M';
         if (num >= 1e3) return (num / 1e3).toFixed(decimals) + 'K';

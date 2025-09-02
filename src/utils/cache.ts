@@ -6,7 +6,7 @@ class SimpleCache {
         this.maxSize = maxSize;
     }
 
-    set(key, value) {
+    set(key: any, value: any) {
         if (this.cache.size >= this.maxSize) {
             const firstKey = this.cache.keys().next().value;
             this.cache.delete(firstKey);
@@ -14,15 +14,15 @@ class SimpleCache {
         this.cache.set(key, value);
     }
 
-    has(key) {
+    has(key: any) {
         return this.cache.has(key);
     }
 
-    get(key) {
+    get(key: any) {
         return this.cache.get(key);
     }
 
-    delete(key) {
+    delete(key: any) {
         return this.cache.delete(key);
     }
 

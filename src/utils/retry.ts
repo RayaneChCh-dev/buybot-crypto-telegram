@@ -1,10 +1,10 @@
 import logger from '../utils/logger';
 
-async function withRetry(fn, attempts = 3, delay = 1000, context = 'operation') {
+async function withRetry(fn: () => Promise<any>, attempts = 3, delay = 1000, context = 'operation') {
     for (let i = 0; i < attempts; i++) {
         try {
             return await fn();
-        } catch (error) {
+        } catch (error: any) {
             const isLastAttempt = i === attempts - 1;
             
             if (isLastAttempt) {

@@ -1,11 +1,14 @@
 import express from 'express';
 import cors from 'cors';
+import { Request, Response, NextFunction } from 'express';
+
 import config from './config';
 import logger from './utils/logger';
 import botService from './services/botService';
 import helius from './services/helius';
 import telegram from './services/telegram';
 import { webhookLimiter, validateWebhookSource, validateWebhookPayload } from './middleware/validation';
+
 
 const app = express();
 
@@ -59,7 +62,7 @@ app.post('/webhook',
                 total: req.body.length,
                 duration: `${duration}ms`
             });
-        } catch (error) {
+        } catch (error: any) {
             const duration = Date.now() - startTime;
             logger.error(`Webhook processing error: ${error.message} (duration: ${duration}ms, transactionCount: ${req.body.length})`);
             
@@ -88,7 +91,7 @@ app.get('/test', async (req, res) => {
             message: 'Test message sent to channel',
             channelId: config.telegram.channelId
         });
-    } catch (error) {
+    } catch (error: any) {
         logger.error('Test message failed:', error);
         res.status(500).json({ 
             success: false,
@@ -106,7 +109,7 @@ app.get('/webhooks', async (req, res) => {
             webhooks: webhooks,
             count: webhooks.length
         });
-    } catch (error) {
+    } catch (error: any) {
         logger.error('Failed to fetch webhooks:', error);
         res.status(500).json({ 
             success: false,
@@ -131,7 +134,7 @@ app.get('/stats', (req, res) => {
                 version: process.version
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         logger.error('Failed to get stats:', error);
         res.status(500).json({
             success: false,
@@ -158,7 +161,7 @@ app.post('/setup-webhook', async (req, res) => {
             message: 'Webhook created successfully',
             webhook: result
         });
-    } catch (error) {
+    } catch (error: any) {
         logger.error('Webhook setup failed:', error);
         res.status(500).json({
             success: false,
@@ -179,7 +182,7 @@ app.delete('/webhook/:webhookId', async (req, res) => {
             message: `Webhook ${webhookId} deletion requested`,
             note: 'Use Helius dashboard to delete webhooks'
         });
-    } catch (error) {
+    } catch (error: any) {
         logger.error('Webhook deletion failed:', error);
         res.status(500).json({
             success: false,
@@ -227,7 +230,7 @@ app.post('/simulate', async (req, res) => {
             processed: processed,
             transaction: mockTransaction.signature
         });
-    } catch (error) {
+    } catch (error: any) {
         logger.error('Transaction simulation failed:', error);
         res.status(500).json({
             success: false,
@@ -273,14 +276,14 @@ bot_uptime_seconds ${process.uptime()}
 
         res.set('Content-Type', 'text/plain');
         res.send(metrics);
-    } catch (error) {
+    } catch (error: any) {
         logger.error('Metrics generation failed:', error);
         res.status(500).send('# Metrics generation failed');
     }
 });
 
 // Generic error handler
-app.use((error, req, res, next) => {
+app.use((error: any, req: Request, res: Response, next: NextFunction) => {
     logger.error(`Unhandled error: ${error.message} at ${req.url} (${req.method})\n${error.stack}`);
 
     res.status(500).json({
@@ -290,24 +293,25 @@ app.use((error, req, res, next) => {
     });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-    res.status(404).json({
-        success: false,
-        error: 'Endpoint not found',
-        path: req.path,
-        availableEndpoints: [
-            'GET /health',
-            'GET /stats', 
-            'GET /webhooks',
-            'GET /test',
-            'GET /metrics',
-            'POST /webhook',
-            'POST /setup-webhook',
-            'POST /simulate (dev only)'
-        ]
-    });
+
+app.use((req: Request, res: Response) => {
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint not found',
+    path: req.path,
+    availableEndpoints: [
+      'GET /health',
+      'GET /stats', 
+      'GET /webhooks',
+      'GET /test',
+      'GET /metrics',
+      'POST /webhook',
+      'POST /setup-webhook',
+      'POST /simulate (dev only)'
+    ]
+  });
 });
+
 
 // Start server function
 async function start() {
@@ -338,7 +342,7 @@ async function start() {
         });
 
         return server;
-    } catch (error) {
+    } catch (error: any) {
         logger.error('Failed to start server:', error);
         throw error;
     }

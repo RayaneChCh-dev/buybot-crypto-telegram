@@ -1,46 +1,7 @@
 import 'dotenv/config';
 
-interface TelegramConfig {
-  botToken: string;
-  channelId: string;
-  errorChannelId?: string;
-  retryAttempts: number;
-  retryDelay: number;
-}
-
-interface HeliusConfig {
-  apiKey: string;
-  rpcUrl: string;
-  webhookUrl?: string;
-  retryAttempts: number;
-}
-
-interface TokenConfig {
-  mintAddress: string;
-  symbol: string;
-  decimals: number;
-}
-
-interface ServerConfig {
-  port?: string;
-  environment?: string;
-}
-
-interface FeaturesConfig {
-  enablePolling: boolean;
-  pollingInterval: number;
-  whaleThreshold: number;
-  batchWindow: number;
-  maxCacheSize: number;
-}
-
-interface Config {
-  telegram: TelegramConfig;
-  helius: HeliusConfig;
-  token: TokenConfig;
-  server: ServerConfig;
-  features: FeaturesConfig;
-}
+import { Config } from '../types';
+import { parse } from 'path';
 
 const config: Config = {
   telegram: {
@@ -62,8 +23,8 @@ const config: Config = {
     decimals: parseInt(process.env.TOKEN_DECIMALS || '6', 10),
   },
   server: {
-    port: process.env.PORT,
-    environment: process.env.NODE_ENV,
+    port: parseInt(process.env.PORT ?? '3000', 10),
+    environment: process.env.NODE_ENV ?? 'development',
   },
   features: {
     enablePolling: process.env.ENABLE_POLLING === 'true',
@@ -90,5 +51,3 @@ for (const key of required) {
 }
 
 export default config;
-
-export type { Config, TelegramConfig, HeliusConfig, TokenConfig, ServerConfig, FeaturesConfig };

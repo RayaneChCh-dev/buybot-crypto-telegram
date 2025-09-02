@@ -7,7 +7,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "start": "tsx src/main.ts",
+    "start": "node dist/main.js",
     "dev": "tsx src/main.ts",
     "build": "tsc",
     "pm2:start": "pm2 start main.ts --name buybot-telegram",
@@ -36,6 +36,9 @@
     "typescript": "^5.9.2"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node-telegram-bot-api": "^0.64.10",
     "eslint": "^8.54.0",
     "jest": "30.1.2",
     "nodemon": "^3.0.2"

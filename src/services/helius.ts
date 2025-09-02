@@ -66,10 +66,10 @@ class HeliusService {
                     { timeout: 10000 }
                 );
                 
-                const holders = response.data?.filter(holder => holder.amount > 0)?.length || 0;
+                const holders = response.data?.filter((holder: any) => holder.amount > 0)?.length || 0;
                 return { totalHolders: holders };
             }, 2, 1000, 'Token metrics');
-        } catch (error) {
+        } catch (error: any) {
             logger.warn('Failed to fetch token metrics:', error.message);
             return { totalHolders: 0 };
         }

@@ -1,5 +1,5 @@
 import pino from 'pino';
-import config from '../config';
+import config from '../config/index.js';
 
 const logger = pino({
     level: config.server.environment === 'production' ? 'info' : 'debug',
@@ -10,7 +10,10 @@ const logger = pino({
             translateTime: 'SYS:standard',
             ignore: 'pid,hostname'
         }
-    } : undefined,
+    } : {
+        target: 'pino',
+        options: {}
+    },
     redact: {
         paths: ['*.apiKey', '*.botToken', '*.token'],
         censor: '***REDACTED***'

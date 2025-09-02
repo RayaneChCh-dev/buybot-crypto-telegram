@@ -1,13 +1,5 @@
-import config from './config';
-
 import server from './server';
 import logger from './utils/logger';
-
-// Graceful shutdown
-process.on('SIGINT', () => {
-    logger.info('Shutting down bot gracefully...');
-    process.exit(0);
-});
 
 process.on('uncaughtException', (error: any) => {
     logger.error('Uncaught Exception:', error);

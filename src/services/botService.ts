@@ -24,7 +24,7 @@ class BotService {
             try {
                 await helius.setupWebhook();
                 logger.info('Webhook setup completed');
-            } catch (error) {
+            } catch (error: any) {
                 logger.error('Webhook setup failed, falling back to polling:', error);
                 config.features.enablePolling = true;
             }
@@ -41,7 +41,7 @@ class BotService {
         logger.info('Bot service initialized successfully');
     }
 
-    async processTransaction(transaction) {
+    async processTransaction(transaction: any) {
         // Check for duplicates
         if (this.processedTxCache.has(transaction.signature)) {
             logger.debug(`Skipping duplicate transaction: ${transaction.signature}`);
@@ -69,7 +69,7 @@ class BotService {
         return true;
     }
 
-    async processWebhookData(transactions) {
+    async processWebhookData(transactions: any) {
         if (!Array.isArray(transactions)) {
             throw new Error('Invalid webhook payload format');
         }
@@ -79,7 +79,7 @@ class BotService {
             try {
                 const processed = await this.processTransaction(transaction);
                 if (processed) processedCount++;
-            } catch (error) {
+            } catch (error: any) {
                 logger.error(`Error processing transaction ${transaction.signature}:`, error);
             }
         }
@@ -102,7 +102,7 @@ class BotService {
                     await this.processTransaction(transaction);
                 }
                 
-            } catch (error) {
+            } catch (error: any) {
                 logger.error('Polling error:', error);
             }
         };
@@ -123,7 +123,7 @@ class BotService {
         logger.info('Polling stopped');
     }
 
-    handleBatchedNotification(tradeData) {
+    handleBatchedNotification(tradeData: any) {
         // Batch implementation for high-volume tokens
         const batchKey = Math.floor(Date.now() / (config.features.batchWindow * 1000));
         
@@ -145,7 +145,7 @@ class BotService {
         return true;
     }
 
-    async processBatch(batch) {
+    async processBatch(batch: any[]) {
         // Send summary of batched transactions
         const totalSol = batch.reduce((sum, trade) => sum + trade.amountSol, 0);
         const totalTokens = batch.reduce((sum, trade) => sum + trade.tokensBought, 0);

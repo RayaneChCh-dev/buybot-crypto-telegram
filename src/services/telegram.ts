@@ -21,7 +21,7 @@ class TelegramService {
         };
     }
 
-    async sendTradeNotification(tradeData, tokenMetrics: Partial<{ totalHolders: number }> = {}) {
+    async sendTradeNotification(tradeData: any, tokenMetrics: Partial<{ totalHolders: number }> = {}) {
         try {
             await withRetry(async () => {
                 // Update stats
@@ -61,13 +61,13 @@ ${tradeData.isWhale ? '\n🚨 **WHALE ALERT** 🚨' : ''}
                 logger.info(`Notification sent for ${tradeData.signature} (${tradeData.amountSol} SOL)`);
             }, config.telegram.retryAttempts, config.telegram.retryDelay, 'Send notification');
 
-        } catch (error) {
+        } catch (error: any) {
             logger.error('Failed to send notification after retries:', error);
             await this.sendErrorAlert(`Failed to send trade notification: ${error.message}`);
         }
     }
 
-    async sendErrorAlert(errorMessage) {
+    async sendErrorAlert(errorMessage: string) {
         if (!config.telegram.errorChannelId) return;
         
         try {
@@ -75,7 +75,7 @@ ${tradeData.isWhale ? '\n🚨 **WHALE ALERT** 🚨' : ''}
                 `🚨 **Bot Error**\n\n${errorMessage}\n\nTime: ${new Date().toISOString()}`,
                 { parse_mode: 'Markdown' }
             );
-        } catch (error) {
+        } catch (error: any) {
             logger.error('Failed to send error alert:', error);
         }
     }
@@ -84,7 +84,7 @@ ${tradeData.isWhale ? '\n🚨 **WHALE ALERT** 🚨' : ''}
         try {
             const message = `🤖 **${config.token.symbol} Bot Started**\n\nMonitoring for new purchases...`;
             await this.bot.sendMessage(config.telegram.channelId, message, { parse_mode: 'Markdown' });
-        } catch (error) {
+        } catch (error: any) {
             logger.warn('Failed to send startup message:', error);
         }
     }
