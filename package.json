@@ -7,7 +7,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "start": "node dist/main.js",
+    "start": "tsx src/main.ts",
     "dev": "tsx src/main.ts",
     "build": "tsc",
     "pm2:start": "pm2 start main.ts --name buybot-telegram",

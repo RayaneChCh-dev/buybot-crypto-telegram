@@ -1,1 +1,1 @@
-web: yarn dev
+web: npx tsx src/main.ts
