@@ -12,6 +12,8 @@ import { webhookLimiter, validateWebhookSource, validateWebhookPayload } from '.
 
 const app = express();
 
+const PORT = process.env.PORT;
+
 // Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(cors());

@@ -23,7 +23,7 @@ const config: Config = {
     decimals: parseInt(process.env.TOKEN_DECIMALS || '6', 10),
   },
   server: {
-    port: parseInt(process.env.PORT ?? '3000', 10),
+    port:process.env.PORT ?? '3000',
     environment: process.env.NODE_ENV ?? 'development',
   },
   features: {
