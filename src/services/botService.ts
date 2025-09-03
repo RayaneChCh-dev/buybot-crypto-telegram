@@ -11,7 +11,6 @@ class BotService {
     isPolling: boolean;
     pollingInterval: any;
     
-    // ADD: Rate limiting
     private requestQueue: Array<() => Promise<void>> = [];
     private requestsThisMinute = 0;
     private requestWindowStart = Date.now();
@@ -22,7 +21,6 @@ class BotService {
         this.batchQueue = new Map();
         this.isPolling = false;
         
-        // Reset rate limit counter every minute
         setInterval(() => {
             this.requestsThisMinute = 0;
             this.requestWindowStart = Date.now();
@@ -33,28 +31,46 @@ class BotService {
     async initialize() {
         logger.info('Initializing bot service...');
         
-        // CRITICAL FIX: Choose ONE method, not both
+        // EMERGENCY FIX: Don't set up webhook on startup if we have webhook URL
+        // Just assume it's already set up or will be set up manually
         if (config.helius.webhookUrl) {
-            logger.info('Using webhook mode - polling disabled');
-            try {
-                await this.queueRequest(() => helius.setupWebhook());
-                logger.info('Webhook setup completed');
-            } catch (error: any) {
-                logger.error('Webhook setup failed:', error);
-                throw error; // Don't fall back to polling in production
-            }
+            logger.info('Webhook mode enabled - assuming webhook is already configured');
+            logger.info('If webhook needs setup, use POST /setup-webhook endpoint manually');
+            
+            // Don't fail startup if webhook setup fails
+            // this.setupWebhookLater();
+            
         } else if (config.features.enablePolling) {
             logger.info('Using polling mode - webhook not configured');
             this.startPolling();
         } else {
-            throw new Error('Neither webhook nor polling is configured!');
+            logger.warn('Neither webhook nor polling configured - bot will only process manual webhook calls');
         }
         
-        await telegram.sendStartupMessage();
+        // Send startup message
+        try {
+            await telegram.sendStartupMessage();
+        } catch (error: any) {
+            logger.error('Failed to send startup message:', error.message);
+            // Don't fail startup for this
+        }
+        
         logger.info('Bot service initialized successfully');
     }
 
-    // ADD: Request queuing to respect rate limits
+    // Optional: Try to setup webhook after startup (non-blocking)
+    private setupWebhookLater() {
+        setTimeout(async () => {
+            try {
+                logger.info('Attempting delayed webhook setup...');
+                await this.queueRequest(() => helius.setupWebhook());
+                logger.info('Delayed webhook setup completed successfully');
+            } catch (error: any) {
+                logger.warn('Delayed webhook setup failed - use /setup-webhook endpoint manually:', error.message);
+            }
+        }, 30000); // Wait 30 seconds after startup
+    }
+
     private async queueRequest<T>(request: () => Promise<T>): Promise<T> {
         return new Promise((resolve, reject) => {
             this.requestQueue.push(async () => {
@@ -72,7 +88,6 @@ class BotService {
     private async processRequestQueue() {
         if (this.isProcessingQueue || this.requestQueue.length === 0) return;
         
-        // Check if we're within rate limits
         const now = Date.now();
         if (now - this.requestWindowStart > 60000) {
             this.requestsThisMinute = 0;
@@ -95,11 +110,10 @@ class BotService {
                 logger.error('Queued request failed:', error);
             }
             
-            // Small delay between requests
             setTimeout(() => {
                 this.isProcessingQueue = false;
                 this.processRequestQueue();
-            }, 200);
+            }, 1000); // Increased delay between requests
         } else {
             this.isProcessingQueue = false;
         }
@@ -122,16 +136,14 @@ class BotService {
             return this.handleBatchedNotification(tradeData);
         }
 
-        // Queue the token metrics request to avoid rate limits
+        // Send notification without token metrics to avoid rate limits
         try {
-            const tokenMetrics = await this.queueRequest(() => helius.getTokenMetrics());
-            await telegram.sendTradeNotification(tradeData, tokenMetrics);
-        } catch (error: any) {
-            logger.error('Failed to get token metrics, sending without:', error.message);
             await telegram.sendTradeNotification(tradeData, { totalHolders: 0 });
+            logger.info(`Processed transaction: ${tradeData.signature} (${tradeData.amountSol} SOL)`);
+        } catch (error: any) {
+            logger.error('Failed to send trade notification:', error.message);
         }
         
-        logger.info(`Processed transaction: ${tradeData.signature} (${tradeData.amountSol} SOL)`);
         return true;
     }
 
@@ -143,26 +155,17 @@ class BotService {
         logger.info(`Processing webhook with ${transactions.length} transactions`);
         let processedCount = 0;
         
-        // Process transactions in smaller batches to avoid overwhelming the system
-        const batchSize = 5;
-        for (let i = 0; i < transactions.length; i += batchSize) {
-            const batch = transactions.slice(i, i + batchSize);
-            
-            await Promise.allSettled(
-                batch.map(async (transaction) => {
-                    try {
-                        const processed = await this.processTransaction(transaction);
-                        if (processed) processedCount++;
-                    } catch (error: any) {
-                        logger.error(`Error processing transaction ${transaction.signature}:`, error);
-                    }
-                })
-            );
-            
-            // Small delay between batches
-            if (i + batchSize < transactions.length) {
-                await new Promise(resolve => setTimeout(resolve, 100));
+        // Process transactions sequentially to avoid overwhelming system
+        for (const transaction of transactions) {
+            try {
+                const processed = await this.processTransaction(transaction);
+                if (processed) processedCount++;
+            } catch (error: any) {
+                logger.error(`Error processing transaction ${transaction.signature}:`, error);
             }
+            
+            // Small delay between transactions
+            await new Promise(resolve => setTimeout(resolve, 50));
         }
 
         logger.info(`Processed ${processedCount}/${transactions.length} transactions from webhook`);
@@ -179,12 +182,11 @@ class BotService {
         logger.info(`Starting polling every ${config.features.pollingInterval}ms`);
 
         const poll = async () => {
-            if (!this.isPolling) return; // Check if still should be polling
+            if (!this.isPolling) return;
             
             try {
-                // Use the rate-limited queue for polling requests
                 const transactions = await this.queueRequest(() => 
-                    helius.getRecentTransactions(5) // Reduced from 10 to 5
+                    helius.getRecentTransactions(3) // Reduced to 3 transactions
                 );
                 
                 for (const transaction of transactions) {
@@ -194,24 +196,19 @@ class BotService {
             } catch (error: any) {
                 logger.error('Polling error:', error);
                 
-                // If rate limited, increase polling interval temporarily
                 if (error.message?.includes('429') || error.response?.status === 429) {
-                    logger.warn('Rate limited during polling, increasing interval');
-                    clearInterval(this.pollingInterval);
+                    logger.warn('Rate limited during polling, pausing for 2 minutes');
+                    this.stopPolling();
                     setTimeout(() => {
-                        if (this.isPolling) {
-                            this.pollingInterval = setInterval(poll, config.features.pollingInterval);
-                        }
-                    }, 60000); // Wait 1 minute before resuming normal polling
+                        logger.info('Resuming polling after rate limit pause');
+                        this.startPolling();
+                    }, 120000); // 2 minute pause
                     return;
                 }
             }
         };
 
-        // Initial poll with delay
-        setTimeout(poll, 2000);
-        
-        // Set up interval
+        setTimeout(poll, 5000); // Initial delay
         this.pollingInterval = setInterval(poll, config.features.pollingInterval);
     }
 
@@ -263,9 +260,25 @@ ${batch.slice(0, 3).map(trade =>
 ${batch.length > 3 ? `\n... and ${batch.length - 3} more` : ''}
         `.trim();
 
-        await telegram.bot.sendMessage(config.telegram.channelId, message, {
-            parse_mode: 'Markdown'
-        });
+        try {
+            await telegram.bot.sendMessage(config.telegram.channelId, message, {
+                parse_mode: 'Markdown'
+            });
+        } catch (error: any) {
+            logger.error('Failed to send batch notification:', error.message);
+        }
+    }
+
+    // Add method to manually setup webhook
+    async setupWebhookManually() {
+        try {
+            const result = await helius.setupWebhook();
+            logger.info('Manual webhook setup completed:', result);
+            return result;
+        } catch (error: any) {
+            logger.error('Manual webhook setup failed:', error);
+            throw error;
+        }
     }
 
     getStatus() {
@@ -275,6 +288,7 @@ ${batch.length > 3 ? `\n... and ${batch.length - 3} more` : ''}
             batchQueueSize: this.batchQueue.size,
             requestsThisMinute: this.requestsThisMinute,
             queuedRequests: this.requestQueue.length,
+            webhookConfigured: !!config.helius.webhookUrl,
             stats: telegram.getStats()
         };
     }
