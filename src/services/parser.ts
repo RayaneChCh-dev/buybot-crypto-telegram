@@ -11,23 +11,26 @@ interface DEXPrograms {
 
 const DEX_PROGRAMS: DEXPrograms = {
     '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8': 'Raydium',
-    'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4': 'Jupiter', 
+    'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4': 'Jupiter',
 };
 
 const WSOL_MINT = 'So11111111111111111111111111111111111111112';
+const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+const USDT_MINT = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB';
 
 class TransactionParser {
     static parseHeliusTransaction(transaction: any) {
         try {
             const { signature, timestamp, events, instructions, feePayer } = transaction;
-            
             if (!events?.swap || events.swap.length === 0) return null;
 
             let relevantSwap: { tokenInputs: any[], tokenOutputs: any[] } | null = null;
 
             for (const swap of events.swap) {
-                const involvesOurToken = swap.tokenInputs?.some((i: any)=> i.mint === config.token.mintAddress) ||
-                                         swap.tokenOutputs?.some((o: any)=> o.mint === config.token.mintAddress);
+                const involvesOurToken =
+                    swap.tokenInputs?.some((i: any) => i.mint === config.token.mintAddress) ||
+                    swap.tokenOutputs?.some((o: any) => o.mint === config.token.mintAddress);
+
                 if (involvesOurToken) {
                     relevantSwap = swap;
                     break;
@@ -36,28 +39,50 @@ class TransactionParser {
 
             if (!relevantSwap) return null;
 
-            // Detect buy vs sell
-            const tokenOutput = relevantSwap.tokenOutputs?.find(o => o.mint === config.token.mintAddress);
-            const tokenInput = relevantSwap.tokenInputs?.find(i => i.mint === config.token.mintAddress);
-            const solInput = relevantSwap.tokenInputs?.find(i => i.mint === WSOL_MINT || i.mint === null);
-            const solOutput = relevantSwap.tokenOutputs?.find(o => o.mint === WSOL_MINT || o.mint === null);
+            // Inputs / outputs
+            const tokenOutput = relevantSwap.tokenOutputs?.find(
+                (o) => o.mint === config.token.mintAddress
+            );
+            const tokenInput = relevantSwap.tokenInputs?.find(
+                (i) => i.mint === config.token.mintAddress
+            );
+
+            const baseInput = relevantSwap.tokenInputs?.find((i) =>
+                [WSOL_MINT, USDC_MINT, USDT_MINT].includes(i.mint)
+            );
+            const baseOutput = relevantSwap.tokenOutputs?.find((o) =>
+                [WSOL_MINT, USDC_MINT, USDT_MINT].includes(o.mint)
+            );
 
             let amountSol = 0;
             let tokens = 0;
             let type: 'BUY' | 'SELL' | 'UNKNOWN' = 'UNKNOWN';
 
-            if (tokenOutput && solInput) {
-                // Buy: SOL -> Token
-                amountSol = solInput.tokenAmount / 1e9;
+            if (tokenOutput && baseInput) {
+                // BUY: Base asset -> Token
+                if (baseInput.mint === WSOL_MINT) {
+                    amountSol = baseInput.tokenAmount / 1e9; // lamports → SOL
+                } else {
+                    amountSol = baseInput.tokenAmount / 1e6; // USDC/USDT decimals
+                }
                 tokens = tokenOutput.tokenAmount / Math.pow(10, config.token.decimals);
                 type = 'BUY';
-            } else if (tokenInput && solOutput) {
-                // Sell: Token -> SOL
-                amountSol = solOutput.tokenAmount / 1e9;
+            } else if (tokenInput && baseOutput) {
+                // SELL: Token -> Base asset
+                if (baseOutput.mint === WSOL_MINT) {
+                    amountSol = baseOutput.tokenAmount / 1e9;
+                } else {
+                    amountSol = baseOutput.tokenAmount / 1e6;
+                }
                 tokens = tokenInput.tokenAmount / Math.pow(10, config.token.decimals);
                 type = 'SELL';
             } else {
-                return null; // Other swap types we don't care about
+                logger.debug('Swap skipped (no matching buy/sell path)' + JSON.stringify({
+                    signature,
+                    inputs: relevantSwap.tokenInputs,
+                    outputs: relevantSwap.tokenOutputs,
+                }, null, 2));
+                return null;
             }
 
             const pricePerToken = tokens > 0 ? amountSol / tokens : 0;
@@ -74,7 +99,7 @@ class TransactionParser {
                 timestamp: new Date(timestamp * 1000),
                 dex,
                 isWhale,
-                raw: transaction
+                raw: transaction,
             };
         } catch (error: any) {
             logger.error('Error parsing transaction:', error);
