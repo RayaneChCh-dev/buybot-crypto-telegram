@@ -42,6 +42,7 @@ app.get('/health', (req, res) => {
 });
 
 app.post('/webhook', 
+    webhookLimiter,
     validateWebhookSource,
     validateWebhookPayload,
     async (req, res) => {

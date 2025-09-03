@@ -21,16 +21,19 @@ const config: Config = {
     decimals: parseInt(process.env.TOKEN_DECIMALS || '6', 10),
   },
   server: {
-    // FIX 1: Ensure port is a number, not string
     port: parseInt(process.env.PORT || '3000', 10),
     environment: process.env.NODE_ENV || 'development',
   },
   features: {
-    enablePolling: process.env.ENABLE_POLLING === 'true',
-    pollingInterval: parseInt(process.env.POLLING_INTERVAL || '5000', 10),
+    // FIX: Disable polling when webhook is configured
+    enablePolling: process.env.WEBHOOK_URL ? false : (process.env.ENABLE_POLLING === 'true'),
+    // FIX: Increase polling interval to avoid rate limits
+    pollingInterval: parseInt(process.env.POLLING_INTERVAL || '30000', 10), // 30 seconds instead of 5
     whaleThreshold: parseFloat(process.env.WHALE_THRESHOLD || '10.0'),
     batchWindow: parseInt(process.env.BATCH_WINDOW || '0', 10),
     maxCacheSize: 1000,
+    // ADD: Rate limiting configuration
+    maxRequestsPerMinute: parseInt(process.env.MAX_REQUESTS_PER_MINUTE || '50', 10),
   },
 };
 
@@ -52,9 +55,13 @@ if (isNaN(config.token.decimals)) {
   throw new Error('TOKEN_DECIMALS must be a valid number');
 }
 
-if (config.server.port !== undefined) {
-  console.log(`   Port: ${config.server.port}`);
+// Log the mode we're operating in
+if (config.helius.webhookUrl && !config.features.enablePolling) {
+  console.log('   Mode: Webhook-only (recommended for production)');
+} else if (config.features.enablePolling) {
+  console.log(`   Mode: Polling every ${config.features.pollingInterval}ms`);
 } else {
-  console.log(`   Port: not set`);
+  console.warn('   Mode: Neither webhook nor polling enabled!');
 }
+
 export default config;

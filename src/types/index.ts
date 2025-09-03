@@ -30,6 +30,7 @@ interface FeaturesConfig {
   whaleThreshold: number;
   batchWindow: number;
   maxCacheSize: number;
+  maxRequestsPerMinute: number;
 }
 
 interface Config {
