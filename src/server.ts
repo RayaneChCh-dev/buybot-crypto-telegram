@@ -76,32 +76,6 @@ app.post('/webhook',
     }
 );
 
-// Test endpoints
-app.get('/test', async (req, res) => {
-    try {
-        const testMessage = '🧪 **Test Message**\n\nBot is working correctly!';
-        
-        await telegram.bot.sendMessage(
-            config.telegram.channelId, 
-            testMessage, 
-            { parse_mode: 'Markdown' }
-        );
-        
-        logger.info('Test message sent successfully');
-        res.json({ 
-            success: true,
-            message: 'Test message sent to channel',
-            channelId: config.telegram.channelId
-        });
-    } catch (error: any) {
-        logger.error('Test message failed:', error);
-        res.status(500).json({ 
-            success: false,
-            error: error.message 
-        });
-    }
-});
-
 // Get active webhooks
 app.get('/webhooks', async (req, res) => {
     try {
@@ -145,7 +119,6 @@ app.get('/stats', (req, res) => {
     }
 });
 
-// Create webhook endpoint
 app.post('/setup-webhook', async (req, res) => {
     try {
         if (!config.helius.webhookUrl) {
@@ -176,9 +149,6 @@ app.post('/setup-webhook', async (req, res) => {
 app.delete('/webhook/:webhookId', async (req, res) => {
     try {
         const { webhookId } = req.params;
-        
-        // Note: You'd need to implement deleteWebhook in helius service
-        // For now, just return the webhook ID
         res.json({
             success: true,
             message: `Webhook ${webhookId} deletion requested`,
@@ -315,89 +285,48 @@ app.use((req: Request, res: Response) => {
 });
 
 
-// Start server function
 async function start() {
     try {
-        console.log('🔧 SERVER: Entering start() function');
-        
-        console.log('🔧 SERVER: Importing config...');
-        // Add try-catch around config import in case that's failing
         let configCheck;
         try {
             configCheck = config;
-            console.log('✅ SERVER: Config imported successfully');
-            console.log('   Port:', configCheck.server?.port);
-            console.log('   Environment:', configCheck.server?.environment);
-            console.log('   Token:', configCheck.token?.symbol);
         } catch (configError: any) {
-            console.error('❌ SERVER: Config import failed:', configError.message);
             throw configError;
         }
-        
-        console.log('🔧 SERVER: Starting botService initialization...');
         logger.info('Initializing server...');
         
-        // Check if botService exists and is importable
         try {
-            console.log('🔧 SERVER: Checking botService...');
             const statusCheck = botService.getStatus();
-            console.log('✅ SERVER: botService is accessible, status:', statusCheck);
         } catch (botError: any) {
-            console.error('❌ SERVER: botService check failed:', botError.message);
             throw new Error(`botService not accessible: ${botError.message}`);
         }
         
         // Add initialization timeout
         const initTimeout = new Promise((_, reject) => {
             setTimeout(() => {
-                console.error('⏱️ SERVER: Bot initialization timeout after 30 seconds');
                 reject(new Error('Bot initialization timeout after 30 seconds'));
             }, 30000);
         });
-        
-        console.log('🔧 SERVER: Calling botService.initialize() with timeout...');
         
         try {
             await Promise.race([
                 botService.initialize(),
                 initTimeout
             ]);
-            console.log('✅ SERVER: botService.initialize() completed successfully');
         } catch (initError: any) {
-            console.error('❌ SERVER: botService.initialize() failed:', initError.message);
             console.error('Stack:', initError.stack);
             throw initError;
         }
         
         logger.info('✅ Bot service initialized successfully');
         
-        console.log('🔧 SERVER: Starting Express server...');
-        console.log(`   Port: ${configCheck.server.port} (type: ${typeof configCheck.server.port})`);
-        console.log(`   Host: 0.0.0.0`);
-        
-        // Start HTTP server with detailed logging
         const server = await new Promise<any>((resolve, reject) => {
-            console.log('🔧 SERVER: Calling app.listen()...');
-            
             const serverInstance = app.listen(configCheck.server.port, '0.0.0.0', () => {
-                console.log('✅ SERVER: app.listen() callback executed');
-                console.log(`✅ Server running on port ${configCheck.server.port}`);
-                console.log(`   Environment: ${configCheck.server.environment}`);
-                console.log(`   Webhook URL: ${configCheck.helius.webhookUrl || 'Not configured'}`);
-                console.log(`   Polling enabled: ${configCheck.features.enablePolling}`);
-                console.log(`   Token symbol: ${configCheck.token.symbol}`);
-                console.log(`   Process ID: ${process.pid}`);
-                
-                logger.info(`✅ Server running on port ${configCheck.server.port}`);
                 resolve(serverInstance);
             });
 
             // Handle server errors
             serverInstance.on('error', (error: any) => {
-                console.error('❌ SERVER: Express server error:', error.message);
-                console.error('   Code:', error.code);
-                console.error('   Port:', configCheck.server.port);
-                
                 logger.error('Server error:\n' + JSON.stringify({
                     message: error.message,
                     code: error.code,
@@ -412,22 +341,18 @@ async function start() {
                 
                 reject(error);
             });
-
-            // Add timeout for server startup
             setTimeout(() => {
-                console.error('⏱️ SERVER: Express server start timeout');
                 reject(new Error('Express server failed to start within timeout'));
             }, 10000);
         });
 
-        console.log('✅ SERVER: Express server started successfully');
+        
 
         // Set server timeout
         server.timeout = 30000;
 
         // Graceful shutdown handlers
         const gracefulShutdown = (signal: string) => {
-            console.log(`🔄 SERVER: ${signal} received, shutting down gracefully...`);
             logger.info(`${signal} received, shutting down gracefully...`);
             
             server.close((err: any) => {
@@ -438,14 +363,10 @@ async function start() {
                 
                 try {
                     botService.stopPolling();
-                    console.log('✅ SERVER: Bot service stopped');
                     logger.info('Bot service stopped');
                 } catch (error: any) {
-                    console.error('❌ SERVER: Error stopping bot service:', error);
                     logger.error('Error stopping bot service:', error);
                 }
-                
-                console.log('✅ SERVER: Graceful shutdown completed');
                 logger.info('Graceful shutdown completed');
                 process.exit(0);
             });

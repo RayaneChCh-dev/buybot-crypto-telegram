@@ -14,7 +14,7 @@ class HeliusService {
         const webhookConfig = {
             webhookURL: config.helius.webhookUrl,
             transactionTypes: ['SWAP'],
-            accountAddresses: [config.token.mintAddress],
+            accountAddresses: ["9JCBhfqSKAnAbnGJ8ZDb5HDX5ACqvv2rhf8P3tBMjZk1"],
             webhookType: 'enhanced'
         };
 
