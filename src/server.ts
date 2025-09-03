@@ -16,17 +16,14 @@ app.set('trust proxy', 1);
 
 const PORT = process.env.PORT;
 
-// Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(cors());
 
-// Request logging middleware
 app.use((req, res, next) => {
     logger.debug(`${req.method} ${req.path} - IP: ${req.ip} - User Agent: ${req.get('User-Agent')}`);
     next();
 });
 
-// Health check endpoint
 app.get('/health', (req, res) => {
     const status = botService.getStatus();
     res.json({
@@ -44,9 +41,7 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Main webhook endpoint
 app.post('/webhook', 
-    webhookLimiter,
     validateWebhookSource,
     validateWebhookPayload,
     async (req, res) => {
@@ -145,7 +140,6 @@ app.post('/setup-webhook', async (req, res) => {
     }
 });
 
-// Delete webhook endpoint (useful for cleanup)
 app.delete('/webhook/:webhookId', async (req, res) => {
     try {
         const { webhookId } = req.params;
@@ -163,7 +157,6 @@ app.delete('/webhook/:webhookId', async (req, res) => {
     }
 });
 
-// Simulate transaction for testing
 app.post('/simulate', async (req, res) => {
     if (config.server.environment === 'production') {
         return res.status(403).json({
@@ -211,7 +204,6 @@ app.post('/simulate', async (req, res) => {
     }
 });
 
-// Metrics endpoint (Prometheus format)
 app.get('/metrics', (req, res) => {
     try {
         const status = botService.getStatus();
@@ -254,7 +246,6 @@ bot_uptime_seconds ${process.uptime()}
     }
 });
 
-// Generic error handler
 app.use((error: any, req: Request, res: Response, next: NextFunction) => {
     logger.error(`Unhandled error: ${error.message} at ${req.url} (${req.method})\n${error.stack}`);
 
@@ -300,8 +291,7 @@ async function start() {
         } catch (botError: any) {
             throw new Error(`botService not accessible: ${botError.message}`);
         }
-        
-        // Add initialization timeout
+
         const initTimeout = new Promise((_, reject) => {
             setTimeout(() => {
                 reject(new Error('Bot initialization timeout after 30 seconds'));
@@ -325,7 +315,6 @@ async function start() {
                 resolve(serverInstance);
             });
 
-            // Handle server errors
             serverInstance.on('error', (error: any) => {
                 logger.error('Server error:\n' + JSON.stringify({
                     message: error.message,
@@ -346,12 +335,8 @@ async function start() {
             }, 10000);
         });
 
-        
-
-        // Set server timeout
         server.timeout = 30000;
 
-        // Graceful shutdown handlers
         const gracefulShutdown = (signal: string) => {
             logger.info(`${signal} received, shutting down gracefully...`);
             
@@ -370,8 +355,7 @@ async function start() {
                 logger.info('Graceful shutdown completed');
                 process.exit(0);
             });
-            
-            // Force exit after timeout
+
             setTimeout(() => {
                 console.error('⏱️ SERVER: Forced shutdown after timeout');
                 logger.error('Forced shutdown after timeout');

@@ -27,14 +27,12 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
   }
 });
 
-// Add process exit handler to log why we're exiting
 process.on('exit', (code) => {
   if (code !== 0) {
     console.log('This indicates an error occurred');
   }
 });
 
-// Startup with detailed step-by-step logging
 async function main() {
   try {
     console.log('🚀 STEP 1: Application starting...');
@@ -52,11 +50,10 @@ async function main() {
     
     console.log('🔧 STEP 3: About to call server.start()...');
     
-    // Add timeout for the entire startup process
     const startupTimeout = new Promise((_, reject) => {
       setTimeout(() => {
         reject(new Error('Application startup timed out after 45 seconds'));
-      }, 45000); // 45 seconds to stay under Heroku's 60s limit
+      }, 45000);
     });
     
     const result = await Promise.race([
