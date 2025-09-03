@@ -12,8 +12,6 @@ interface DEXPrograms {
 const DEX_PROGRAMS: DEXPrograms = {
     '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8': 'Raydium',
     'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4': 'Jupiter', 
-    'PhoeNiX7VjjpGxLKn6YCwXJvT4XhUdLQJPf1Dc2tPx8': 'Photon',
-    '9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP': 'Orca'
 };
 
 const WSOL_MINT = 'So11111111111111111111111111111111111111112';
@@ -21,18 +19,16 @@ const WSOL_MINT = 'So11111111111111111111111111111111111111112';
 class TransactionParser {
     static parseHeliusTransaction(transaction: any) {
         try {
-            const { description, signature, timestamp, events, instructions, feePayer } = transaction;
+            const { signature, timestamp, events, instructions, feePayer } = transaction;
             
-            if (!events?.swap || events.swap.length === 0) {
-                return null;
-            }
+            if (!events?.swap || events.swap.length === 0) return null;
 
-            // Find swap involving our token
             let relevantSwap: { tokenInputs: any[], tokenOutputs: any[] } | null = null;
+
             for (const swap of events.swap) {
-                const hasOurToken = swap.tokenInputs?.some((input: any) => input.mint === config.token.mintAddress) ||
-                                  swap.tokenOutputs?.some((output: any) => output.mint === config.token.mintAddress);
-                if (hasOurToken) {
+                const involvesOurToken = swap.tokenInputs?.some((i: any)=> i.mint === config.token.mintAddress) ||
+                                         swap.tokenOutputs?.some((o: any)=> o.mint === config.token.mintAddress);
+                if (involvesOurToken) {
                     relevantSwap = swap;
                     break;
                 }
@@ -40,33 +36,41 @@ class TransactionParser {
 
             if (!relevantSwap) return null;
 
-            // Check if this is a buy (SOL -> Token)
-            const tokenOutput = relevantSwap.tokenOutputs?.find(output => 
-                output.mint === config.token.mintAddress);
-            const tokenInput = relevantSwap.tokenInputs?.find(input => 
-                input.mint === config.token.mintAddress);
-            
-            const isBuy = tokenOutput && !tokenInput;
-            if (!isBuy) return null;
+            // Detect buy vs sell
+            const tokenOutput = relevantSwap.tokenOutputs?.find(o => o.mint === config.token.mintAddress);
+            const tokenInput = relevantSwap.tokenInputs?.find(i => i.mint === config.token.mintAddress);
+            const solInput = relevantSwap.tokenInputs?.find(i => i.mint === WSOL_MINT || i.mint === null);
+            const solOutput = relevantSwap.tokenOutputs?.find(o => o.mint === WSOL_MINT || o.mint === null);
 
-            // Extract buy data
-            const solInput = relevantSwap.tokenInputs?.find(input => input.mint === WSOL_MINT);
-            const amountSol = solInput ? solInput.tokenAmount / 1e9 : 0;
-            const tokensBought = tokenOutput ? tokenOutput.tokenAmount / Math.pow(10, config.token.decimals) : 0;
-            const pricePerToken = tokensBought > 0 ? amountSol / tokensBought : 0;
+            let amountSol = 0;
+            let tokens = 0;
+            let type: 'BUY' | 'SELL' | 'UNKNOWN' = 'UNKNOWN';
 
-            // Determine DEX
+            if (tokenOutput && solInput) {
+                // Buy: SOL -> Token
+                amountSol = solInput.tokenAmount / 1e9;
+                tokens = tokenOutput.tokenAmount / Math.pow(10, config.token.decimals);
+                type = 'BUY';
+            } else if (tokenInput && solOutput) {
+                // Sell: Token -> SOL
+                amountSol = solOutput.tokenAmount / 1e9;
+                tokens = tokenInput.tokenAmount / Math.pow(10, config.token.decimals);
+                type = 'SELL';
+            } else {
+                return null; // Other swap types we don't care about
+            }
+
+            const pricePerToken = tokens > 0 ? amountSol / tokens : 0;
             const dex = this.getDEXFromInstructions(instructions);
-            
-            // Check if whale
             const isWhale = amountSol >= config.features.whaleThreshold;
 
             return {
                 signature,
                 buyer: feePayer || 'Unknown',
                 amountSol,
-                tokensBought,
+                tokensBought: tokens,
                 pricePerToken,
+                type,
                 timestamp: new Date(timestamp * 1000),
                 dex,
                 isWhale,
@@ -79,9 +83,9 @@ class TransactionParser {
     }
 
     static getDEXFromInstructions(instructions: Instruction[] = []) {
-        for (const instruction of instructions) {
-            const dexName = DEX_PROGRAMS[instruction.programId];
-            if (dexName) return dexName;
+        for (const inst of instructions) {
+            const name = DEX_PROGRAMS[inst.programId];
+            if (name) return name;
         }
         return 'Unknown DEX';
     }

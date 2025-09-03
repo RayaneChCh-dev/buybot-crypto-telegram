@@ -38,8 +38,12 @@ class TelegramService {
                 else if (tradeData.amountSol >= 1) emoji = '🚀';
                 else if (tradeData.amountSol >= 0.1) emoji = '💎';
 
+                const actionLabel = tradeData.type === 'BUY' ? 'PURCHASE' : tradeData.type === 'SELL' ? 'SALE' : 'TRADE';
+
+
                 const message = `
-${emoji} **NEW ${config.token.symbol} PURCHASE${tradeData.isWhale ? ' - WHALE ALERT!' : ''}**
+${emoji} **NEW ${config.token.symbol} ${actionLabel}${tradeData.isWhale ? ' - WHALE ALERT!' : ''}**
+
 
 💰 **Amount**: ${tradeData.amountSol.toFixed(4)} SOL ${solPrice > 0 ? `($${TransactionParser.formatNumber(usdValue)})` : ''}
 🪙 **Tokens**: ${TransactionParser.formatNumber(tradeData.tokensBought)} ${config.token.symbol}
