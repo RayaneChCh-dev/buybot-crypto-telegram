@@ -3,11 +3,9 @@ import pino from "pino";
 const isProduction = process.env.NODE_ENV === "production";
 const isHeroku = !!process.env.DYNO;
 
-// Configure logger based on environment
 const loggerConfig = isHeroku
   ? {
-      level: "info", // only log important stuff
-      // 🚨 NO transport in Heroku → prevents worker crash
+      level: "info",
       transport: undefined,
       formatters: {
         level: (label: string) => ({ level: label.toUpperCase() }),
@@ -19,7 +17,6 @@ const loggerConfig = isHeroku
       },
     }
   : {
-      // LOCAL DEVELOPMENT CONFIGURATION
       level: "debug",
       transport: {
         target: "pino-pretty",

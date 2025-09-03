@@ -9,7 +9,7 @@ class PriceService {
     constructor() {
         this.solPrice = 0;
         this.lastUpdate = 0;
-        this.updateInterval = 60000; // 1 minute
+        this.updateInterval = 60000;
     }
 
     async getSolPrice() {
@@ -23,7 +23,6 @@ class PriceService {
     async updatePrice() {
         try {
             await withRetry(async () => {
-                // Try Jupiter first, fallback to CoinGecko
                 try {
                     const response = await axios.get(
                         'https://price.jup.ag/v4/price?ids=So11111111111111111111111111111111111111112',

@@ -34,7 +34,6 @@ const config: Config = {
   },
 };
 
-// Validate required config with better error messages
 const required: Array<{key: string, path: string}> = [
   { key: 'TELEGRAM_BOT_TOKEN', path: 'telegram.botToken' },
   { key: 'TELEGRAM_CHANNEL_ID', path: 'telegram.channelId' },
@@ -42,17 +41,13 @@ const required: Array<{key: string, path: string}> = [
   { key: 'TOKEN_MINT_ADDRESS', path: 'token.mintAddress' },
 ];
 
-// FIX 2: Better validation with specific error messages
 for (const { key, path } of required) {
   const value = path.split('.').reduce((obj, k) => (obj as any)?.[k], config);
   if (!value) {
-    console.error(`❌ Missing required environment variable: ${key}`);
-    console.error(`   Set this variable in your Heroku config vars or .env file`);
     throw new Error(`Missing required config: ${key}`);
   }
 }
 
-// FIX 3: Additional validation for token configuration
 if (isNaN(config.token.decimals)) {
   throw new Error('TOKEN_DECIMALS must be a valid number');
 }
@@ -62,11 +57,4 @@ if (config.server.port !== undefined) {
 } else {
   console.log(`   Port: not set`);
 }
-
-console.log(`✅ Configuration loaded successfully`);
-console.log(`   Environment: ${config.server.environment}`);
-console.log(`   Port: ${config.server.port}`);
-console.log(`   Token: ${config.token.symbol} (${config.token.decimals} decimals)`);
-console.log(`   Polling enabled: ${config.features.enablePolling}`);
-
 export default config;

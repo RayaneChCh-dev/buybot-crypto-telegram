@@ -18,8 +18,6 @@ class BotService {
 
     async initialize() {
         logger.info('Initializing bot service...');
-        
-        // Setup webhook if URL provided
         if (config.helius.webhookUrl && !config.features.enablePolling) {
             try {
                 await helius.setupWebhook();
@@ -29,20 +27,15 @@ class BotService {
                 config.features.enablePolling = true;
             }
         }
-
-        // Start polling if enabled
         if (config.features.enablePolling) {
             this.startPolling();
         }
-
-        // Send startup notification
         await telegram.sendStartupMessage();
         
         logger.info('Bot service initialized successfully');
     }
 
     async processTransaction(transaction: any) {
-        // Check for duplicates
         if (this.processedTxCache.has(transaction.signature)) {
             logger.debug(`Skipping duplicate transaction: ${transaction.signature}`);
             return false;
@@ -52,11 +45,7 @@ class BotService {
         if (!tradeData) {
             return false;
         }
-
-        // Mark as processed
         this.processedTxCache.set(transaction.signature, Date.now());
-
-        // Handle batching if enabled
         if (config.features.batchWindow > 0) {
             return this.handleBatchedNotification(tradeData);
         }

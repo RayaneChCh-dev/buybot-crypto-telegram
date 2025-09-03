@@ -19,10 +19,9 @@ interface TokenConfig {
   decimals: number;
 }
 
-// FIX: Make port required since Express needs it to start
 interface ServerConfig {
-  port: number;  // Changed from optional to required
-  environment: string;  // Changed from optional to required
+  port: number;
+  environment: string;
 }
 
 interface FeaturesConfig {

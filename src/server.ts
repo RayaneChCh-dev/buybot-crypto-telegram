@@ -12,6 +12,8 @@ import { webhookLimiter, validateWebhookSource, validateWebhookPayload } from '.
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 const PORT = process.env.PORT;
 
 // Middleware
@@ -76,7 +78,6 @@ app.post('/webhook',
     }
 );
 
-// Get active webhooks
 app.get('/webhooks', async (req, res) => {
     try {
         const webhooks = await helius.getWebhooks();
@@ -94,7 +95,6 @@ app.get('/webhooks', async (req, res) => {
     }
 });
 
-// Stats endpoint
 app.get('/stats', (req, res) => {
     try {
         const status = botService.getStatus();

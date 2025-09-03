@@ -32,7 +32,6 @@ class TelegramService {
                 const solPrice = await priceService.getSolPrice();
                 const usdValue = tradeData.amountSol * solPrice;
                 
-                // Choose emoji based on buy size
                 let emoji = '🟢';
                 if (tradeData.isWhale) emoji = '🐋';
                 else if (tradeData.amountSol >= 1) emoji = '🚀';

@@ -102,7 +102,11 @@ class TransactionParser {
                 raw: transaction,
             };
         } catch (error: any) {
-            logger.error('Error parsing transaction:', error);
+            logger.error('Error parsing transaction:' + JSON.stringify({
+                message: error.message,
+                stack: error.stack,
+                tx: JSON.stringify(transaction, null, 2),
+            }, null, 2));
             return null;
         }
     }
