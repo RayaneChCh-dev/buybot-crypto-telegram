@@ -76,6 +76,20 @@ app.post('/webhook',
 
 app.get('/webhooks', async (req, res) => {
     try {
+        // Check if we're currently rate limited
+        const rateLimitKey = 'helius_rate_limited';
+        const rateLimitUntil = (global as any)[rateLimitKey] || 0;
+        
+        if (Date.now() < rateLimitUntil) {
+            const waitTime = Math.ceil((rateLimitUntil - Date.now()) / 1000);
+            return res.status(503).json({
+                success: false,
+                error: 'Rate limited',
+                message: `API temporarily unavailable. Try again in ${waitTime} seconds`,
+                retryAfter: waitTime
+            });
+        }
+
         const webhooks = await helius.getWebhooks();
         res.json({
             success: true,
@@ -84,6 +98,20 @@ app.get('/webhooks', async (req, res) => {
         });
     } catch (error: any) {
         logger.error('Failed to fetch webhooks:', error);
+        
+        // If it's a rate limit error, set a cooldown period
+        if (error.response?.status === 429 || error.message?.includes('429')) {
+            const cooldownMinutes = 15; // 15 minute cooldown
+            (global as any)['helius_rate_limited'] = Date.now() + (cooldownMinutes * 60 * 1000);
+            
+            return res.status(429).json({
+                success: false,
+                error: 'Rate limited',
+                message: `Helius API rate limit exceeded. Cooldown for ${cooldownMinutes} minutes`,
+                retryAfter: cooldownMinutes * 60
+            });
+        }
+        
         res.status(500).json({ 
             success: false,
             error: error.message 
@@ -124,6 +152,20 @@ app.post('/setup-webhook', async (req, res) => {
             });
         }
 
+        // Check rate limit
+        const rateLimitKey = 'helius_rate_limited';
+        const rateLimitUntil = (global as any)[rateLimitKey] || 0;
+        
+        if (Date.now() < rateLimitUntil) {
+            const waitTime = Math.ceil((rateLimitUntil - Date.now()) / 1000);
+            return res.status(503).json({
+                success: false,
+                error: 'Rate limited',
+                message: `Cannot setup webhook while rate limited. Wait ${waitTime} seconds`,
+                retryAfter: waitTime
+            });
+        }
+
         const result = await helius.setupWebhook();
         
         logger.info('Webhook setup completed:', result);
@@ -134,12 +176,38 @@ app.post('/setup-webhook', async (req, res) => {
         });
     } catch (error: any) {
         logger.error('Webhook setup failed:', error);
+        
+        if (error.response?.status === 429 || error.message?.includes('429')) {
+            const cooldownMinutes = 15;
+            (global as any)['helius_rate_limited'] = Date.now() + (cooldownMinutes * 60 * 1000);
+            
+            return res.status(429).json({
+                success: false,
+                error: 'Rate limited',
+                message: `Helius API rate limit exceeded. Try again in ${cooldownMinutes} minutes`,
+                retryAfter: cooldownMinutes * 60
+            });
+        }
+        
         res.status(500).json({
             success: false,
             error: error.message
         });
     }
 });
+
+app.get('/rate-limit-status', (req, res) => {
+    const rateLimitUntil = (global as any)['helius_rate_limited'] || 0;
+    const isRateLimited = Date.now() < rateLimitUntil;
+    
+    res.json({
+        success: true,
+        rateLimited: isRateLimited,
+        cooldownEndsAt: isRateLimited ? new Date(rateLimitUntil).toISOString() : null,
+        secondsRemaining: isRateLimited ? Math.ceil((rateLimitUntil - Date.now()) / 1000) : 0
+    });
+});
+
 
 app.delete('/webhook/:webhookId', async (req, res) => {
     try {
