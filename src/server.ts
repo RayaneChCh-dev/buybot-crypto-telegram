@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { Request, Response, NextFunction } from 'express';
+import { setupSwagger } from './swagger';
 
 import config from './config';
 import logger from './utils/logger';
@@ -11,6 +12,8 @@ import { webhookLimiter, validateWebhookSource, validateWebhookPayload } from '.
 
 
 const app = express();
+
+setupSwagger(app);
 
 app.set('trust proxy', 1);
 
@@ -24,6 +27,16 @@ app.use((req, res, next) => {
     next();
 });
 
+/**
+ * @openapi
+ * /health:
+ *   get:
+ *     summary: Health check
+ *     description: Returns the status of the bot and server health.
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 app.get('/health', (req, res) => {
     const status = botService.getStatus();
     res.json({
@@ -40,6 +53,17 @@ app.get('/health', (req, res) => {
         ...status
     });
 });
+
+/**
+ * @openapi
+ * /webhook:
+ *   post:
+ *     summary: Process webhook
+ *     description: Processes a webhook from Helius.
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 
 app.post('/webhook', 
     webhookLimiter,
@@ -73,6 +97,17 @@ app.post('/webhook',
         }
     }
 );
+
+/**
+ * @openapi
+ * /webhooks:
+ *   get:
+ *     summary: Fetch webhooks
+ *     description: Fetches webhooks from Helius.
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 
 app.get('/webhooks', async (req, res) => {
     try {
@@ -119,6 +154,17 @@ app.get('/webhooks', async (req, res) => {
     }
 });
 
+/**
+ * @openapi
+ * /stats:
+ *   get:
+ *     summary: Fetch stats
+ *     description: Fetches stats.
+ *     responses:
+ *       200:
+ *         description: OK
+ */
+
 app.get('/stats', (req, res) => {
     try {
         const status = botService.getStatus();
@@ -142,6 +188,17 @@ app.get('/stats', (req, res) => {
         });
     }
 });
+
+/**
+ * @openapi
+ * /setup-webhook:
+ *   post:
+ *     summary: Setup webhook
+ *     description: Sets up a webhook with Helius.
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 
 app.post('/setup-webhook', async (req, res) => {
     try {
@@ -196,6 +253,17 @@ app.post('/setup-webhook', async (req, res) => {
     }
 });
 
+/**
+ * @openapi
+ * /rate-limit-status:
+ *   get:
+ *     summary: Rate limit status
+ *     description: Checks the rate limit status.
+ *     responses:
+ *       200:
+ *         description: OK
+ */
+
 app.get('/rate-limit-status', (req, res) => {
     const rateLimitUntil = (global as any)['helius_rate_limited'] || 0;
     const isRateLimited = Date.now() < rateLimitUntil;
@@ -208,6 +276,16 @@ app.get('/rate-limit-status', (req, res) => {
     });
 });
 
+/**
+ * @openapi
+ * /webhook/{webhookId}:
+ *   delete:
+ *     summary: Delete webhook
+ *     description: Deletes a webhook.
+ *     responses:
+ *       200:
+ *         description: OK
+ */
 
 app.delete('/webhook/:webhookId', async (req, res) => {
     try {
@@ -273,6 +351,17 @@ app.post('/simulate', async (req, res) => {
     }
 });
 
+/**
+ * @openapi
+ * /metrics:
+ *   post:
+ *     summary: Fetch metrics
+ *     description: Fetches metrics.
+ *     responses:
+ *       200:
+ *         description: OK
+ */
+
 app.get('/metrics', (req, res) => {
     try {
         const status = botService.getStatus();
@@ -335,7 +424,8 @@ app.use((req: Request, res: Response) => {
       'GET /health',
       'GET /stats', 
       'GET /webhooks',
-      'GET /test',
+      'DELETE /webhooks/:webhookId',
+      'GET /rate-limit-status',
       'GET /metrics',
       'POST /webhook',
       'POST /setup-webhook',
